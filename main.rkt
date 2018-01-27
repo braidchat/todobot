@@ -4,8 +4,8 @@
 ;; Set the bot-id, bot-token, and braid-url in environment variables.
 ;; If doing this, you'd run the bot like
 ;; BOT_ID='...' BOT_TOKEN='...' BRAID_URL='...' racket -t main.rkt
-(define bot-id "5a63a020-2e4e-4abf-97aa-45997265fafa")
-(define bot-token "snoR2Tp3PPHrQaLl62WnnEw7xGE29XO5gMgZxMAS")
+(define bot-id "5a6cc117-b777-478f-9d57-61b9bfd2b95e")
+(define bot-token "hz4MI_DcwlHwr8Bks-qE9nzpxPwvEor9nWmGCA7O")
 (define braid-url "http://localhost:5557")
 
 ;; set the port the bot will listen on
@@ -35,7 +35,7 @@
 (define (act-on-message msg)
   (store-todo msg)
   (let ([todos (list-todos (hash-ref msg '#:user-id))])
-    (reply-to msg (string-join todos)
+    (reply-to msg (string-join todos "\n")
               #:bot-id bot-id
               #:bot-token bot-token
               #:braid-url braid-url)))
