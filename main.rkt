@@ -14,29 +14,36 @@
 ;; set a function to run on startup
 (on-init (λ () (println "Bot starting")))
 
-(define todo-re #rx"^/todobot (.*)$")
-(define (parse-message text)
-  (second (regexp-match todo-re text)))
-
 (define db (make-hash))
 
-(define (store-todo msg)
-  (let* ([todo (parse-message (hash-ref msg '#:content))]
-        [user (hash-ref msg '#:user-id)]
-        [todos (hash-ref! db user '())])
+(define (store-todo msg todo)
+  (let* ([user (hash-ref msg '#:user-id)]
+         [todos (hash-ref! db user '())])
     (hash-set! db user (cons todo todos))))
 
 (define (list-todos user)
   (hash-ref! db user '()))
 
+(define msg-handlers (list
+                      (cons #px"^/todobot\\s+list"
+                            (λ (msg matches)
+                              (let* ([user-id (hash-ref msg '#:user-id)]
+                                     [todos (list-todos user-id)])
+                                (reply-to msg (string-join todos "\n")
+                                           #:bot-id bot-id
+                                           #:bot-token bot-token
+                                           #:braid-url braid-url))))
+                      (cons #px"^/todobot\\s+add (.*)$"
+                            (λ (msg matches)
+                              (store-todo msg (first matches))))))
+
+(define (act-on-message msg)
+  (let ([content (hash-ref msg '#:content)])
+    (for/first ([re-fn msg-handlers]
+                #:when (regexp-match (car re-fn) content))
+      ((cdr re-fn) msg (cdr (regexp-match (car re-fn) content))))))
+
 ;; required function you must implement
 ;; `msg` is the decoded message that the bot has recieved
 ;; note that, if it's a mention, the content will begin with `/botname`
-(define (act-on-message msg)
-  (store-todo msg)
-  (let ([todos (list-todos (hash-ref msg '#:user-id))])
-    (reply-to msg (string-join todos "\n")
-              #:bot-id bot-id
-              #:bot-token bot-token
-              #:braid-url braid-url)))
 
