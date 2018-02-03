@@ -1,5 +1,8 @@
 #lang braidbot/insta
-(require racket/string)
+(require
+  racket/string
+  db
+  braidbot/uuid)
 
 ;; Set the bot-id, bot-token, and braid-url in environment variables.
 ;; If doing this, you'd run the bot like
@@ -12,17 +15,26 @@
 (listen-port 8989)
 
 ;; set a function to run on startup
-(on-init (λ () (println "Bot starting")))
+
+(define con (sqlite3-connect #:database "todo.sqlite"
+                             #:mode 'create))
+
+
+(on-init (λ () (println "Bot starting")
+           (query-exec con
+            "create table if not exists todos
+             (id rowid, user_id text, content text)")))
 
 (define db (make-hash))
 
 (define (store-todo msg todo)
-  (let* ([user (hash-ref msg '#:user-id)]
-         [todos (hash-ref! db user '())])
-    (hash-set! db user (cons todo todos))))
+  (let ([user (hash-ref msg '#:user-id)])
+    (query-exec con "insert into todos (user_id, content) values ($1 , $2)"
+                (uuid->string user) todo)))
 
 (define (list-todos user)
-  (hash-ref! db user '()))
+  (query-list con "select content from todos where user_id=$1"
+              (uuid->string user)))
 
 (define msg-handlers (list
                       (cons #px"^/todobot\\s+list"
