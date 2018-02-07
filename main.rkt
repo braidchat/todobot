@@ -25,7 +25,6 @@
             "create table if not exists todos
              (id rowid, user_id text, content text)")))
 
-(define db (make-hash))
 
 (define (store-todo msg todo)
   (let ([user (hash-ref msg '#:user-id)])
