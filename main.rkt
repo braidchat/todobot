@@ -7,8 +7,8 @@
 ;; Set the bot-id, bot-token, and braid-url in environment variables.
 ;; If doing this, you'd run the bot like
 ;; BOT_ID='...' BOT_TOKEN='...' BRAID_URL='...' racket -t main.rkt
-(define bot-id "5a6cc117-b777-478f-9d57-61b9bfd2b95e")
-(define bot-token "hz4MI_DcwlHwr8Bks-qE9nzpxPwvEor9nWmGCA7O")
+(define bot-id "5a7b5657-6f0e-4345-b153-1a1b6a419ab9")
+(define bot-token "daO_NO11mgNWb-yKS_CJI08ZDu9DSQmBg0VMKCbG")
 (define braid-url "http://localhost:5557")
 
 ;; set the port the bot will listen on
@@ -19,12 +19,10 @@
 (define con (sqlite3-connect #:database "todo.sqlite"
                              #:mode 'create))
 
-
 (on-init (λ () (println "Bot starting")
            (query-exec con
             "create table if not exists todos
              (id rowid, user_id text, content text)")))
-
 
 (define (store-todo msg todo)
   (let ([user (hash-ref msg '#:user-id)])
@@ -35,18 +33,24 @@
   (query-list con "select content from todos where user_id=$1"
               (uuid->string user)))
 
+(define (reply msg content)
+   (reply-to msg content
+             #:bot-id bot-id
+             #:bot-token bot-token
+             #:braid-url braid-url))
+
 (define msg-handlers (list
                       (cons #px"^/todobot\\s+list"
                             (λ (msg matches)
                               (let* ([user-id (hash-ref msg '#:user-id)]
                                      [todos (list-todos user-id)])
-                                (reply-to msg (string-join todos "\n")
-                                           #:bot-id bot-id
-                                           #:bot-token bot-token
-                                           #:braid-url braid-url))))
+                                (reply msg (string-join todos "\n")))))
                       (cons #px"^/todobot\\s+add (.*)$"
                             (λ (msg matches)
-                              (store-todo msg (first matches))))))
+                              (let ([todos (string-split (first matches) ", ")])
+                               (for ([todo todos])
+                                  (store-todo msg todo))
+                               (reply msg (~a "added " (length todos))))))))
 
 (define (act-on-message msg)
   (let ([content (hash-ref msg '#:content)])
