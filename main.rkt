@@ -2,7 +2,8 @@
 (require
   racket/string
   db
-  braidbot/uuid)
+  braidbot/uuid
+  braidbot/util)
 
 ;; Set the bot-id, bot-token, and braid-url in environment variables.
 ;; If doing this, you'd run the bot like
@@ -30,8 +31,15 @@
                 (uuid->string user) todo)))
 
 (define (list-todos user)
-  (query-list con "select content from todos where user_id=$1"
+  (query-rows con "select rowid, content from todos where user_id=$1"
               (uuid->string user)))
+
+(define (complete-todo todo-id)
+  (query-exec con "delete from todos where rowid = $1" todo-id))
+
+
+(define (format-row row)
+  (format "~a. ~a" (vector-ref row 0) (vector-ref row 1)))
 
 (define (reply msg content)
    (reply-to msg content
@@ -43,14 +51,20 @@
                       (cons #px"^/todobot\\s+list"
                             (λ (msg matches)
                               (let* ([user-id (hash-ref msg '#:user-id)]
-                                     [todos (list-todos user-id)])
+                                     [todos (map format-row (list-todos user-id))])
                                 (reply msg (string-join todos "\n")))))
                       (cons #px"^/todobot\\s+add (.*)$"
                             (λ (msg matches)
                               (let ([todos (string-split (first matches) ", ")])
                                (for ([todo todos])
                                   (store-todo msg todo))
-                               (reply msg (~a "added " (length todos))))))))
+                               (reply msg (~a "added " (length todos))))))
+                      (cons #px"^/todobot\\s+done\\s+(\\d+)$"
+                            (lambda (msg matches)
+                              (let ([todo-id
+                                     (~> matches first string->number)])
+                                (complete-todo todo-id)
+                                (reply msg (~a "completed " todo-id)))))))
 
 (define (act-on-message msg)
   (let ([content (hash-ref msg '#:content)])
