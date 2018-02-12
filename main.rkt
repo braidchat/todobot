@@ -34,8 +34,8 @@
   (query-rows con "select rowid, content from todos where user_id=$1"
               (uuid->string user)))
 
-(define (complete-todo todo-id)
-  (query-exec con "delete from todos where rowid = $1" todo-id))
+(define (complete-todo user-id todo-id)
+  (query-exec con "delete from todos where rowid = $1 and user_id = $2" todo-id (uuid->string user-id)))
 
 
 (define (format-row row)
@@ -47,27 +47,31 @@
              #:bot-token bot-token
              #:braid-url braid-url))
 
+(define bot-name "todobot")
+
 (define msg-handlers (list
-                      (cons #px"^/todobot\\s+list"
+                      (cons #px"^list"
                             (λ (msg matches)
                               (let* ([user-id (hash-ref msg '#:user-id)]
                                      [todos (map format-row (list-todos user-id))])
                                 (reply msg (string-join todos "\n")))))
-                      (cons #px"^/todobot\\s+add (.*)$"
+                      (cons #px"^add (.*)$"
                             (λ (msg matches)
                               (let ([todos (string-split (first matches) ", ")])
                                (for ([todo todos])
                                   (store-todo msg todo))
                                (reply msg (~a "added " (length todos))))))
-                      (cons #px"^/todobot\\s+done\\s+(\\d+)$"
+                      (cons #px"^done\\s+(\\d+)$"
                             (lambda (msg matches)
                               (let ([todo-id
                                      (~> matches first string->number)])
-                                (complete-todo todo-id)
+                                (complete-todo (hash-ref msg '#:user-id) todo-id)
                                 (reply msg (~a "completed " todo-id)))))))
 
 (define (act-on-message msg)
-  (let ([content (hash-ref msg '#:content)])
+  (let* ([full-content (hash-ref msg '#:content)]
+         [name-re (pregexp (string-append "^/" bot-name "\\s+"))]
+         [content (regexp-replace name-re full-content "")])
     (for/first ([re-fn msg-handlers]
                 #:when (regexp-match (car re-fn) content))
       ((cdr re-fn) msg (cdr (regexp-match (car re-fn) content))))))
