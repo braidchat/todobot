@@ -8,9 +8,9 @@
 ;; Set the bot-id, bot-token, and braid-url in environment variables.
 ;; If doing this, you'd run the bot like
 ;; BOT_ID='...' BOT_TOKEN='...' BRAID_URL='...' racket -t main.rkt
-(define bot-id "5a7b5657-6f0e-4345-b153-1a1b6a419ab9")
-(define bot-token "daO_NO11mgNWb-yKS_CJI08ZDu9DSQmBg0VMKCbG")
-(define braid-url "http://localhost:5557")
+(define bot-id (or (getenv "BOT_ID")  "5a7b5657-6f0e-4345-b153-1a1b6a419ab9"))
+(define bot-token (or (getenv "BOT_TOKEN") "daO_NO11mgNWb-yKS_CJI08ZDu9DSQmBg0VMKCbG"))
+(define braid-url (or (getenv "BRAID_API_URL") "http://localhost:5557"))
 
 ;; set the port the bot will listen on
 (listen-port 8989)
@@ -47,7 +47,7 @@
              #:bot-token bot-token
              #:braid-url braid-url))
 
-(define bot-name "todobot")
+(define bot-name "todo")
 
 (define msg-handlers (list
                       (cons #px"^list"
